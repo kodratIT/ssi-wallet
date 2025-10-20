@@ -1,0 +1,170 @@
+@startuml Identity-Creation-Flow
+!theme plain
+skinparam sequenceMessageAlign center
+
+title Identity Creation Flow - DID Generation (Phase 2)
+
+actor "User" as user
+participant "Create Identity\nScreen" as create_screen
+participant "Identity\nService" as identity_service
+participant "DID Manager\nService" as did_manager
+participant "Key Manager\nService" as key_manager
+participant "Veramo\nAgent" as veramo
+participant "Veramo\nKMS" as kms
+participant "DID Manager\nPlugin" as did_plugin
+
+database "SQLite\nDatabase" as db
+database "Secure\nStorage" as secure
+
+== Step 1: User Initiates Creation (STORY-032) ==
+
+user -> create_screen: Taps "Create Identity"
+activate create_screen
+create_screen --> user: Shows creation form
+
+user -> create_screen: Enters alias: "My Work Identity"
+user -> create_screen: Selects method: "did:jwk"
+user -> create_screen: Checks "Set as default"
+user -> create_screen: Taps "Create"
+
+create_screen -> create_screen: Validates form
+alt Valid
+    create_screen -> identity_service: createIdentity(\n  alias: "My Work Identity",\n  method: "jwk",\n  setAsDefault: true\n)
+else Invalid
+    create_screen --> user: Shows validation errors
+    deactivate create_screen
+end
+
+== Step 2: Identity Service Orchestration (STORY-026) ==
+
+activate identity_service
+identity_service -> identity_service: Validate inputs
+
+identity_service -> did_manager: createDID(\n  method: "jwk",\n  alias: "My Work Identity"\n)
+
+== Step 3: DID Manager Creates DID (STORY-025) ==
+
+activate did_manager
+did_manager -> veramo: didManagerCreate({\n  provider: "did:jwk",\n  alias: "My Work Identity"\n})
+
+== Step 4: Veramo Agent Coordinates Creation ==
+
+activate veramo
+veramo -> kms: Generate key pair
+note right: First, create cryptographic key
+
+== Step 5: Key Manager Creates Key (STORY-024) ==
+
+activate kms
+kms -> kms: Generate Ed25519 key pair
+note right
+  **Key Generation**:
+  - Algorithm: Ed25519
+  - Private key: 32 bytes
+  - Public key: 32 bytes
+  
+  **Security**: Private key 
+  never leaves secure storage!
+end note
+
+kms -> secure: Store private key (encrypted)
+activate secure
+secure --> kms: Key ID (kid)
+deactivate secure
+
+kms -> db: Store key metadata
+activate db
+db --> kms: Stored
+deactivate db
+
+kms --> veramo: Key created\n(kid: "abc123...", \npublicKey: "...")
+deactivate kms
+
+== Step 6: DID Generation from Key ==
+
+veramo -> did_plugin: Create DID from key
+activate did_plugin
+
+did_plugin -> did_plugin: Encode public key as JWK
+note right
+  **DID Creation**:
+  1. Take public key
+  2. Format as JWK (JSON Web Key)
+  3. Base64url encode
+  4. Prepend "did:jwk:"
+  
+  Result: did:jwk:eyJrdHk...
+end note
+
+did_plugin -> did_plugin: Generate DID:\ndid:jwk:eyJrdHkiOiJPS1Ai...
+
+did_plugin -> db: Store DID document
+activate db
+db --> did_plugin: Stored in identifiers table
+deactivate db
+
+did_plugin --> veramo: DID created
+deactivate did_plugin
+
+== Step 7: Veramo Returns Identifier ==
+
+veramo --> did_manager: IIdentifier {\n  did: "did:jwk:eyJ...",\n  alias: "My Work Identity",\n  keys: [{ kid, type }],\n  services: []\n}
+deactivate veramo
+
+did_manager --> identity_service: Identifier created
+deactivate did_manager
+
+== Step 8: Set as Default (STORY-029) ==
+
+alt setAsDefault = true
+    identity_service -> "AsyncStorage": setItem(\n  "@default_did",\n  "did:jwk:eyJ..."\n)
+    activate "AsyncStorage"
+    "AsyncStorage" --> identity_service: Stored
+    deactivate "AsyncStorage"
+end
+
+== Step 9: Return to UI ==
+
+identity_service --> create_screen: Identity {\n  did,\n  alias,\n  isDefault: true,\n  keys: [...]\n}
+deactivate identity_service
+
+create_screen -> "Identity Detail\nScreen": Navigate with DID
+activate "Identity Detail\nScreen"
+"Identity Detail\nScreen" --> user: Shows created identity\nwith QR code
+deactivate "Identity Detail\nScreen"
+
+deactivate create_screen
+
+== What Got Created ==
+
+note over user, secure
+  **Created Objects**:
+  
+  1. **Private Key**:
+     - Stored in: Secure Storage (encrypted)
+     - Type: Ed25519
+     - Never exported
+  
+  2. **Key Metadata**:
+     - Stored in: Database (keys table)
+     - kid, type, publicKeyHex
+  
+  3. **DID**:
+     - Format: did:jwk:eyJrdHkiOi...
+     - Stored in: Database (identifiers table)
+     - Self-contained (public key embedded)
+  
+  4. **DID Document**:
+     - Verification methods
+     - Authentication methods
+     - Stored in database
+  
+  5. **Identity Metadata**:
+     - Alias, tags, avatar
+     - Default status
+     - AsyncStorage + Database
+  
+  **Result**: User has self-sovereign identity!
+end note
+
+@enduml

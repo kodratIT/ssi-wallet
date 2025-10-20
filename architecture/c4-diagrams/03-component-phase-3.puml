@@ -1,0 +1,299 @@
+@startuml Phase-3-Components
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+' Phase 3: Credential Management - Component Diagram
+' Shows credential system assembly story by story
+
+LAYOUT_WITH_LEGEND()
+
+title Component Diagram - Phase 3: Credential Management Assembly
+
+' Phase 0, 1, 2 dependencies
+Container_Boundary(dependencies, "Dependencies from Phases 0, 1, 2") {
+    Component(navigation_dep, "Navigation", "Phase 0")
+    Component(database_dep, "TypeORM", "Phase 0")
+    Component(veramo_agent_dep, "Veramo Agent", "Phase 2")
+    Component(did_manager_dep, "DID Manager", "Phase 2")
+    Component(key_manager_dep, "Key Manager", "Phase 2")
+}
+
+Container_Boundary(phase3, "Phase 3: Credential Management Components") {
+    
+    ' STORY-033: Veramo Credential Plugin
+    Component(credential_w3c_plugin, "Credential W3C Plugin", "@veramo/credential-w3c", "W3C VC operations: create, verify\n[STORY-033]")
+    Component(credential_ld_plugin, "Credential LD Plugin", "@veramo/credential-ld", "JSON-LD signatures (optional)\n[STORY-033]")
+    Component(credential_jwt_plugin, "Credential JWT Plugin", "Built-in", "JWT-based VCs (default)\n[STORY-033]")
+    
+    ' STORY-034: Database Schema
+    Component(credential_entity, "Credential Entity", "TypeORM Entity", "Verifiable Credential storage\n[STORY-034]")
+    Component(credential_metadata_entity, "Credential Metadata", "TypeORM Entity", "Display data, categories, tags\n[STORY-034]")
+    Component(presentation_entity, "Presentation Entity", "TypeORM Entity", "Verifiable Presentation records\n[STORY-034]")
+    Component(schema_migration, "Schema Migration", "TypeORM Migration", "Database schema versioning\n[STORY-034]")
+    
+    ' STORY-035: Credential Service
+    Component(credential_service, "Credential Service", "Service Layer", "High-level VC operations\n[STORY-035]")
+    Component(receive_handler, "Receive Handler", "Service", "Process incoming VCs (OID4VCI)\n[STORY-035]")
+    Component(storage_handler, "Storage Handler", "Service", "Save VCs to database\n[STORY-035]")
+    
+    ' STORY-036: Verification Service
+    Component(verification_service, "Verification Service", "Service Layer", "Verify VC signatures and status\n[STORY-036]")
+    Component(signature_verifier, "Signature Verifier", "Crypto", "Check cryptographic signatures\n[STORY-036]")
+    Component(status_checker, "Status Checker", "HTTP Client", "Check revocation status\n[STORY-036]")
+    Component(expiry_checker, "Expiry Checker", "Logic", "Validate expiration dates\n[STORY-036]")
+    
+    ' STORY-037: Branding Service
+    Component(branding_service, "Branding Service", "Service Layer", "Extract issuer branding\n[STORY-037]")
+    Component(branding_parser, "Branding Parser", "JSON Parser", "Parse credentialBranding field\n[STORY-037]")
+    Component(branding_cache, "Branding Cache", "In-memory", "Cache logos and colors\n[STORY-037]")
+    Component(image_downloader, "Image Downloader", "HTTP Client", "Download issuer logos\n[STORY-037]")
+    
+    ' STORY-038: Credentials List UI
+    Component(credentials_list_screen, "Credentials List Screen", "React Native Screen", "Display all VCs, search, filter\n[STORY-038]")
+    Component(credential_card, "Credential Card", "React Component", "Beautiful VC display with branding\n[STORY-038]")
+    Component(search_bar, "Search Bar", "React Component", "Search credentials by type/issuer\n[STORY-038]")
+    
+    ' STORY-039: Credential Details UI
+    Component(credential_detail_screen, "Credential Detail Screen", "React Native Screen", "Full VC data, claims, metadata\n[STORY-039]")
+    Component(claims_viewer, "Claims Viewer", "React Component", "Display credential claims\n[STORY-039]")
+    Component(verification_badge, "Verification Badge", "React Component", "Show verification status\n[STORY-039]")
+    Component(qr_code, "QR Code", "Component", "VC as QR for presentation\n[STORY-039]")
+    
+    ' STORY-040: Receive Credential Flow
+    Component(receive_screen, "Receive Credential Screen", "React Native Screen", "Accept VC from issuer\n[STORY-040]")
+    Component(oid4vci_handler, "OID4VCI Handler", "Service", "OpenID4VCI protocol implementation\n[STORY-040]")
+    Component(credential_preview, "Credential Preview", "React Component", "Show VC before accepting\n[STORY-040]")
+    
+    ' STORY-041: Search & Filter
+    Component(search_service, "Search Service", "Service", "Full-text search in VCs\n[STORY-041]")
+    Component(filter_service, "Filter Service", "Service", "Filter by type, issuer, status\n[STORY-041]")
+    Component(filter_ui, "Filter UI", "React Component", "Filter controls (dropdown, chips)\n[STORY-041]")
+    
+    ' STORY-042: Categories & Organization
+    Component(category_service, "Category Service", "Service", "Organize VCs by categories\n[STORY-042]")
+    Component(category_ui, "Category Tabs", "React Component", "Tab navigation by category\n[STORY-042]")
+    Component(auto_categorizer, "Auto Categorizer", "Logic", "Auto-assign categories by type\n[STORY-042]")
+    
+    ' STORY-043: Sharing & Presentation
+    Component(presentation_service, "Presentation Service", "Service", "Create Verifiable Presentations\n[STORY-043]")
+    Component(present_screen, "Present Credential Screen", "React Native Screen", "Select VCs to present\n[STORY-043]")
+    Component(oid4vp_handler, "OID4VP Handler", "Service", "OpenID4VP protocol\n[STORY-043]")
+    
+    ' STORY-044: Credential Actions
+    Component(actions_menu, "Actions Menu", "React Component", "Share, delete, export actions\n[STORY-044]")
+    Component(delete_handler, "Delete Handler", "Service", "Soft/hard delete VCs\n[STORY-044]")
+    Component(export_handler, "Export Handler", "Service", "Export VC as JSON/QR\n[STORY-044]")
+    
+    ' STORY-045: Error Handling
+    Component(vc_error_boundary, "VC Error Boundary", "React Component", "Catch VC-related errors\n[STORY-045]")
+    Component(error_logger, "Error Logger", "Service", "Log verification errors\n[STORY-045]")
+    
+    ' STORY-046: Empty States
+    Component(empty_state, "Empty State Component", "React Component", "No credentials UI with CTA\n[STORY-046]")
+    Component(error_state, "Error State Component", "React Component", "Failed verification UI\n[STORY-046]")
+    
+    ' STORY-047: Loading States
+    Component(skeleton_loader, "Skeleton Loader", "React Component", "Loading placeholders\n[STORY-047]")
+    Component(refresh_control, "Refresh Control", "React Component", "Pull-to-refresh\n[STORY-047]")
+}
+
+ContainerDb(sqlite_db, "SQLite Database", "TypeORM")
+
+System_Ext(issuer_oid4vci, "Issuer OID4VCI Endpoint", "Issues VCs")
+System_Ext(verifier_oid4vp, "Verifier OID4VP Endpoint", "Requests VCs")
+System_Ext(status_list_api, "Status List API", "Revocation status")
+
+' Story Assembly Flow
+
+' STORY-033: Veramo Credential Plugin
+Rel(veramo_agent_dep, credential_w3c_plugin, "Uses", "1. VC operations")
+Rel(credential_w3c_plugin, credential_jwt_plugin, "Uses", "JWT VCs (default)")
+Rel(credential_w3c_plugin, credential_ld_plugin, "Optionally uses", "JSON-LD VCs")
+Rel(credential_w3c_plugin, key_manager_dep, "Signs with", "Private keys")
+
+' STORY-034: Database Schema
+Rel(credential_entity, sqlite_db, "Stores in", "2. credentials table")
+Rel(credential_metadata_entity, sqlite_db, "Stores in", "credential_metadata table")
+Rel(presentation_entity, sqlite_db, "Stores in", "presentations table")
+Rel(schema_migration, database_dep, "Migrates", "Add VC tables")
+
+' STORY-035: Credential Service
+Rel(credential_service, credential_w3c_plugin, "Uses", "3. VC ops")
+Rel(credential_service, receive_handler, "Delegates to", "Receive VCs")
+Rel(credential_service, storage_handler, "Delegates to", "Save VCs")
+Rel(storage_handler, credential_entity, "Saves to", "Database")
+Rel(receive_handler, oid4vci_handler, "Uses", "OID4VCI protocol")
+Rel(oid4vci_handler, issuer_oid4vci, "Fetches from", "HTTPS")
+
+' STORY-036: Verification
+Rel(verification_service, signature_verifier, "Verifies with", "4. Crypto check")
+Rel(verification_service, status_checker, "Checks with", "Revocation")
+Rel(verification_service, expiry_checker, "Checks with", "Date validation")
+Rel(signature_verifier, key_manager_dep, "Uses", "Public key verification")
+Rel(status_checker, status_list_api, "Queries", "HTTPS")
+
+' STORY-037: Branding
+Rel(branding_service, branding_parser, "Parses with", "5. Extract branding")
+Rel(branding_service, branding_cache, "Caches in", "Memory")
+Rel(branding_service, image_downloader, "Downloads logos", "HTTPS")
+
+' STORY-038: List UI
+Rel(credentials_list_screen, credential_service, "Loads from", "6. Get all VCs")
+Rel(credentials_list_screen, credential_card, "Renders", "Each VC")
+Rel(credentials_list_screen, search_bar, "Shows", "Search UI")
+Rel(credential_card, branding_service, "Gets branding", "Logo, colors")
+
+' STORY-039: Details UI
+Rel(credential_card, credential_detail_screen, "Navigates to", "7. On tap")
+Rel(credential_detail_screen, claims_viewer, "Shows", "VC claims")
+Rel(credential_detail_screen, verification_badge, "Shows", "Status")
+Rel(credential_detail_screen, qr_code, "Displays", "QR code")
+Rel(verification_badge, verification_service, "Gets status", "Verify")
+
+' STORY-040: Receive Flow
+Rel(receive_screen, credential_preview, "Shows", "8. Preview VC")
+Rel(receive_screen, credential_service, "Saves via", "Accept button")
+
+' STORY-041: Search & Filter
+Rel(search_bar, search_service, "Searches with", "9. Query")
+Rel(credentials_list_screen, filter_ui, "Shows", "Filter controls")
+Rel(filter_ui, filter_service, "Filters via", "Criteria")
+Rel(search_service, credential_entity, "Queries", "Full-text")
+
+' STORY-042: Categories
+Rel(credentials_list_screen, category_ui, "Shows", "10. Category tabs")
+Rel(category_ui, category_service, "Gets categories", "From")
+Rel(category_service, auto_categorizer, "Uses", "Auto-assign")
+
+' STORY-043: Presentation
+Rel(present_screen, presentation_service, "Creates VP", "11. Selected VCs")
+Rel(presentation_service, credential_w3c_plugin, "Creates VP via", "Veramo")
+Rel(presentation_service, oid4vp_handler, "Sends via", "OID4VP")
+Rel(oid4vp_handler, verifier_oid4vp, "Presents to", "HTTPS")
+
+' STORY-044: Actions
+Rel(credential_detail_screen, actions_menu, "Shows", "12. Actions")
+Rel(actions_menu, delete_handler, "Deletes via", "Delete action")
+Rel(actions_menu, export_handler, "Exports via", "Export action")
+Rel(delete_handler, credential_entity, "Removes from", "Database")
+
+' STORY-045: Error Handling
+Rel(vc_error_boundary, credentials_list_screen, "Wraps", "13. Catch errors")
+Rel(verification_service, error_logger, "Logs to", "Error tracking")
+
+' STORY-046: Empty States
+Rel(credentials_list_screen, empty_state, "Shows if", "14. No VCs")
+Rel(credential_detail_screen, error_state, "Shows if", "Verification failed")
+
+' STORY-047: Loading
+Rel(credentials_list_screen, skeleton_loader, "Shows while", "15. Loading")
+Rel(credentials_list_screen, refresh_control, "Has", "Pull-to-refresh")
+
+SHOW_LEGEND()
+
+note top of dependencies
+  **Required from Phases 0, 1, 2**:
+  
+  - Navigation (Phase 0): Screen routing
+  - TypeORM (Phase 0): Database storage
+  - Veramo Agent (Phase 2): VC operations
+  - DID Manager (Phase 2): Identity for VCs
+  - Key Manager (Phase 2): Signing VCs
+  
+  Phase 3 is the CULMINATION of all phases!
+end note
+
+note right of credential_w3c_plugin
+  **STORY-033: VC Plugin**
+  
+  W3C Verifiable Credentials:
+  - Create VCs (issue)
+  - Verify VCs (signature)
+  - Create VPs (presentation)
+  
+  Formats:
+  - JWT (default, compact)
+  - JSON-LD (full semantics)
+  
+  Order: MUST be first in Phase 3
+end note
+
+note right of credential_service
+  **STORY-035: Service Layer**
+  
+  High-level VC operations:
+  - Receive from issuer (OID4VCI)
+  - Store in database
+  - List all credentials
+  - Get credential by ID
+  - Delete credential
+  
+  Orchestrates:
+  - Veramo plugin
+  - Database storage
+  - Protocol handlers
+end note
+
+note right of verification_service
+  **STORY-036: Verification**
+  
+  Multi-layered verification:
+  1. Signature (cryptographic)
+  2. Status (revocation check)
+  3. Expiry (date validation)
+  4. Schema (optional)
+  
+  Result:
+  - Valid ✅
+  - Invalid ❌
+  - Revoked ⚠️
+  - Expired ⏰
+end note
+
+note bottom of phase3
+  **Phase 3 Assembly Process**:
+  
+  Week 9: Infrastructure
+  - STORY-033 → Veramo VC plugin
+  - STORY-034 → Database schema (entities)
+  - STORY-035 → Credential service
+  - STORY-036 → Verification service
+  - STORY-037 → Branding service
+  
+  Week 10: Core UI
+  - STORY-038 → Credentials list screen
+  - STORY-039 → Credential detail screen
+  - STORY-040 → Receive credential flow
+  
+  Week 11: Advanced Features
+  - STORY-041 → Search & filter
+  - STORY-042 → Categories & organization
+  - STORY-043 → Sharing & presentation
+  - STORY-044 → Credential actions
+  
+  Week 12: Polish
+  - STORY-045 → Error handling
+  - STORY-046 → Empty states
+  - STORY-047 → Loading states
+  
+  **Result**: Complete credential management!
+  
+  **Key Features**:
+  - Receive VCs from issuers (OID4VCI)
+  - Store VCs securely
+  - Verify VC signatures and status
+  - Beautiful branded display
+  - Search & filter
+  - Categories & organization
+  - Present to verifiers (OID4VP)
+  - Complete UX (loading, errors, empty)
+  
+  **Integration**:
+  - Uses DIDs from Phase 2
+  - Uses Keys from Phase 2
+  - Uses Database from Phase 0
+  - Uses Navigation from Phase 0
+  
+  **This completes the SSI Wallet core!**
+end note
+
+@enduml

@@ -1,0 +1,71 @@
+@startuml SSI-Wallet-Context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+' SSI Wallet - System Context Diagram
+' Level 1: Shows the wallet in its ecosystem
+
+LAYOUT_WITH_LEGEND()
+
+title System Context Diagram - SSI Mobile Wallet
+
+Person(user, "Wallet User", "Individual who wants to manage their digital identity and credentials")
+Person(issuer_admin, "Credential Issuer", "Organization that issues verifiable credentials (University, Government, Company)")
+Person(verifier, "Credential Verifier", "Service that requests and verifies credentials (Bank, Employer, Website)")
+
+System(wallet, "SSI Mobile Wallet", "Self-Sovereign Identity wallet for managing DIDs and Verifiable Credentials on mobile devices")
+
+System_Ext(issuer_service, "Issuer Service", "OID4VCI endpoint that issues credentials")
+System_Ext(verifier_service, "Verifier Service", "OID4VP endpoint that requests credentials")
+System_Ext(did_resolver, "Universal Resolver", "Resolves DIDs to DID Documents")
+System_Ext(revocation_service, "Status List Service", "Checks credential revocation status")
+
+' User relationships
+Rel(user, wallet, "Uses", "Manages identity, stores credentials, presents to verifiers")
+
+' Wallet to External Systems
+Rel(wallet, issuer_service, "Receives credentials from", "OID4VCI protocol, HTTPS")
+Rel(wallet, verifier_service, "Presents credentials to", "OID4VP/SIOPv2, HTTPS")
+Rel(wallet, did_resolver, "Resolves DIDs", "HTTPS")
+Rel(wallet, revocation_service, "Checks credential status", "HTTPS")
+
+' Issuer relationships
+Rel(issuer_admin, issuer_service, "Issues credentials through")
+
+' Verifier relationships
+Rel(verifier, verifier_service, "Requests credentials through")
+Rel(verifier_service, did_resolver, "Verifies DID Documents", "HTTPS")
+Rel(verifier_service, revocation_service, "Checks credential validity", "HTTPS")
+
+' Issuer to Resolver
+Rel(issuer_service, did_resolver, "Publishes DID Documents", "HTTPS")
+
+SHOW_LEGEND()
+
+note right of wallet
+  **Key Features**:
+  - Self-sovereign identity (user controls data)
+  - Decentralized identifiers (DIDs)
+  - Verifiable credentials storage
+  - Biometric/PIN security
+  - No central authority
+  - Privacy-preserving
+  - Cross-platform (iOS/Android)
+end note
+
+note right of issuer_service
+  **Examples**:
+  - University (degree credentials)
+  - Government (ID credentials)
+  - Employer (employment credentials)
+  - Bank (financial credentials)
+end note
+
+note right of verifier_service
+  **Examples**:
+  - Banking app (verify identity)
+  - HR system (verify degree)
+  - Border control (verify passport)
+  - Age-restricted services
+end note
+
+@enduml

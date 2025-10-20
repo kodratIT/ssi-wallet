@@ -1,0 +1,190 @@
+@startuml Onboarding-Flow
+!theme plain
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+title Onboarding Flow - User Journey (Phase 1)
+
+actor "User" as user
+participant "Welcome\nScreen" as welcome
+participant "Terms\nScreen" as terms
+participant "Details\nForm" as details
+participant "PIN\nSetup" as pin
+participant "Biometric\nSetup" as bio
+participant "Complete\nScreen" as complete
+
+participant "Onboarding\nState Machine" as machine
+participant "Redux\nStore" as redux
+participant "Form\nValidation" as validation
+participant "PIN\nService" as pin_service
+participant "Biometric\nService" as bio_service
+
+database "Database" as db
+database "Secure\nStorage" as secure
+
+== Step 1: Welcome (STORY-011) ==
+
+user -> welcome: Opens app (first time)
+activate welcome
+welcome -> machine: Event: START
+activate machine
+machine --> welcome: State: WELCOME
+welcome --> user: Shows hero, CTA
+deactivate welcome
+
+user -> welcome: Taps "Get Started"
+activate welcome
+welcome -> machine: Event: NEXT
+machine --> welcome: State: TERMS
+welcome -> terms: Navigate to
+deactivate welcome
+
+== Step 2: Terms & Privacy (STORY-012) ==
+
+activate terms
+terms --> user: Shows legal text,\ncheckboxes
+deactivate terms
+
+user -> terms: Reads terms
+user -> terms: Checks boxes
+
+terms -> terms: Validates checkboxes
+alt All boxes checked
+    user -> terms: Taps "I Accept"
+    activate terms
+    terms -> redux: Save acceptance
+    activate redux
+    redux -> db: Persist state
+    deactivate redux
+    terms -> machine: Event: NEXT
+    machine --> terms: State: DETAILS
+    terms -> details: Navigate to
+    deactivate terms
+else Not all checked
+    terms --> user: Error: Must accept all
+end
+
+== Step 3: Personal Details (STORY-013) ==
+
+activate details
+details --> user: Shows form\n(name, email, etc)
+deactivate details
+
+user -> details: Fills form
+details -> validation: Validate input
+activate validation
+validation --> details: Validation result
+deactivate validation
+
+alt Valid data
+    user -> details: Taps "Continue"
+    activate details
+    details -> db: Save user profile
+    activate db
+    db --> details: Saved
+    deactivate db
+    details -> machine: Event: NEXT
+    machine --> details: State: PIN_SETUP
+    details -> pin: Navigate to
+    deactivate details
+else Invalid data
+    details --> user: Show errors
+end
+
+== Step 4: PIN Setup (STORY-014) ==
+
+activate pin
+pin --> user: Shows PIN input\n(6 digits)
+deactivate pin
+
+user -> pin: Enters PIN (123456)
+pin -> pin: Validates (6 digits)
+
+alt Valid PIN
+    pin -> pin: Move to confirm
+    pin --> user: Shows confirm screen
+    
+    user -> pin: Re-enters PIN
+    pin -> pin: Compare PINs
+    
+    alt PINs match
+        pin -> pin_service: Hash PIN
+        activate pin_service
+        pin_service -> pin_service: bcrypt(pin)
+        pin_service -> secure: Store hash
+        activate secure
+        secure --> pin_service: Stored
+        deactivate secure
+        pin_service --> pin: Success
+        deactivate pin_service
+        
+        pin -> machine: Event: NEXT
+        machine --> pin: State: BIOMETRIC
+        pin -> bio: Navigate to
+    else PINs don't match
+        pin --> user: Error: PINs must match
+    end
+else Invalid PIN
+    pin --> user: Error: Must be 6 digits
+end
+
+== Step 5: Biometric Setup (STORY-015) ==
+
+activate bio
+bio -> bio_service: Check hardware
+activate bio_service
+bio_service --> bio: Available/Not available
+deactivate bio_service
+
+alt Biometric available
+    bio --> user: Shows "Enable TouchID/FaceID?"
+    
+    alt User enables
+        user -> bio: Taps "Enable"
+        bio -> bio_service: Authenticate
+        activate bio_service
+        bio_service --> user: Shows biometric prompt
+        user -> bio_service: Authenticates (fingerprint/face)
+        bio_service -> secure: Store token
+        secure --> bio_service: Stored
+        bio_service --> bio: Success
+        deactivate bio_service
+    else User skips
+        user -> bio: Taps "Skip"
+    end
+else Not available
+    bio --> user: Shows "Not available, skip"
+end
+
+bio -> machine: Event: NEXT
+machine --> bio: State: COMPLETE
+bio -> complete: Navigate to
+
+== Step 6: Onboarding Complete (STORY-018) ==
+
+activate complete
+complete -> redux: Set onboarding_complete = true
+activate redux
+redux -> db: Persist status
+deactivate redux
+
+complete --> user: Shows success animation,\n"All set!" message
+deactivate complete
+
+user -> complete: Taps "Continue"
+activate complete
+complete -> machine: Event: FINISH
+machine --> complete: State: DONE
+complete -> "Home\nScreen": Navigate to
+deactivate complete
+
+== Lock Screen (STORY-021) ==
+
+note over user, secure
+  Next time app opens:
+  - Shows Lock Screen
+  - Requires PIN or Biometric
+  - Guards authenticated routes
+end note
+
+@enduml

@@ -1,0 +1,122 @@
+@startuml SSI-Wallet-Container
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+' SSI Wallet - Container Diagram
+' Level 2: Shows technical containers (apps, databases, services)
+
+LAYOUT_WITH_LEGEND()
+
+title Container Diagram - SSI Mobile Wallet
+
+Person(user, "Wallet User", "Mobile device user")
+
+System_Boundary(wallet_system, "SSI Mobile Wallet") {
+    Container(mobile_app, "Mobile Application", "React Native, Expo", "User interface for all wallet operations. Screens, navigation, user interactions")
+    
+    Container(veramo_agent, "Veramo Agent", "JavaScript, Veramo Core", "Handles all DID and VC operations. Creates DIDs, signs credentials, verifies signatures")
+    
+    Container(key_manager, "Key Management Service", "Veramo KMS", "Manages cryptographic keys. Stores private keys in secure enclave, performs signing")
+    
+    Container(did_manager, "DID Management Service", "Veramo DID Manager", "Creates and manages decentralized identifiers (did:jwk, did:key)")
+    
+    Container(credential_service, "Credential Service", "Veramo Credential Plugin", "Manages verifiable credentials. Create, store, verify, and present VCs")
+    
+    Container(state_machine, "State Machine", "XState", "Manages onboarding flow, navigation states, and complex user flows")
+    
+    Container(redux_store, "Redux Store", "Redux Toolkit", "Global application state management. User data, credentials list, app settings")
+    
+    ContainerDb(sqlite_db, "SQLite Database", "TypeORM + SQLite", "Persistent storage for DIDs, keys metadata, credentials, and user data")
+    
+    ContainerDb(secure_storage, "Secure Storage", "Expo SecureStore", "Hardware-backed secure storage for private keys, PIN hashes, and sensitive data")
+    
+    ContainerDb(async_storage, "Async Storage", "React Native AsyncStorage", "Local storage for preferences, cache, and non-sensitive data")
+}
+
+System_Ext(issuer_api, "Issuer OID4VCI API", "OpenID4VCI endpoint")
+System_Ext(verifier_api, "Verifier OID4VP API", "OpenID4VP/SIOPv2 endpoint")
+System_Ext(did_resolver_api, "Universal Resolver API", "DID resolution")
+System_Ext(status_list_api, "Status List API", "Credential revocation")
+
+' User to App
+Rel(user, mobile_app, "Uses", "Touch, biometric, PIN")
+
+' App internal relationships
+Rel(mobile_app, state_machine, "Controls flow", "State transitions")
+Rel(mobile_app, redux_store, "Reads/writes state", "Actions, selectors")
+Rel(mobile_app, veramo_agent, "Requests DID/VC operations", "Async calls")
+
+' Veramo Agent to Services
+Rel(veramo_agent, key_manager, "Uses", "Key operations")
+Rel(veramo_agent, did_manager, "Uses", "DID operations")
+Rel(veramo_agent, credential_service, "Uses", "VC operations")
+
+' Services to Storage
+Rel(key_manager, secure_storage, "Stores private keys", "Encrypted")
+Rel(key_manager, sqlite_db, "Stores key metadata", "TypeORM")
+
+Rel(did_manager, sqlite_db, "Stores DIDs", "TypeORM")
+
+Rel(credential_service, sqlite_db, "Stores credentials", "TypeORM")
+
+Rel(redux_store, async_storage, "Persists state", "Redux Persist")
+
+Rel(mobile_app, async_storage, "Stores preferences", "Key-value")
+
+' External API calls
+Rel(credential_service, issuer_api, "Receives credentials", "HTTPS, OID4VCI")
+Rel(credential_service, verifier_api, "Presents credentials", "HTTPS, OID4VP")
+Rel(did_manager, did_resolver_api, "Resolves DIDs", "HTTPS")
+Rel(credential_service, status_list_api, "Checks status", "HTTPS")
+
+SHOW_LEGEND()
+
+note right of mobile_app
+  **Built in Phases**:
+  Phase 0: Navigation, Redux
+  Phase 1: Onboarding screens
+  Phase 2: Identity UI
+  Phase 3: Credential UI
+  
+  **Tech Stack**:
+  - React Native
+  - Expo 51
+  - TypeScript
+  - React Navigation
+end note
+
+note right of veramo_agent
+  **Veramo Plugins**:
+  - @veramo/core
+  - @veramo/did-manager
+  - @veramo/key-manager
+  - @veramo/credential-w3c
+  - @veramo/data-store
+  
+  **Built in Phase 2**
+end note
+
+note right of sqlite_db
+  **Tables**:
+  - identifiers (DIDs)
+  - keys (key metadata)
+  - credentials (VCs)
+  - credential_metadata
+  - user_profiles
+  
+  **ORM**: TypeORM
+  **Migrations**: Version controlled
+end note
+
+note right of secure_storage
+  **Stores**:
+  - Private keys (encrypted)
+  - PIN hash
+  - Biometric tokens
+  
+  **Security**:
+  - Hardware-backed on iOS
+  - Keystore on Android
+  - Never exported
+end note
+
+@enduml

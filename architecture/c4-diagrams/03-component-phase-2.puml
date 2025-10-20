@@ -1,0 +1,223 @@
+@startuml Phase-2-Components
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4-Component.puml
+
+' Phase 2: Identity & DID - Component Diagram
+' Shows identity system assembly story by story
+
+LAYOUT_WITH_LEGEND()
+
+title Component Diagram - Phase 2: Identity & DID Assembly
+
+' Phase 0 & 1 dependencies
+Container_Boundary(dependencies, "Dependencies from Phase 0 & 1") {
+    Component(navigation_dep, "Navigation", "Phase 0")
+    Component(redux_dep, "Redux", "Phase 0")
+    Component(database_dep, "TypeORM Database", "Phase 0")
+    ComponentDb(secure_storage_dep, "Secure Storage", "Phase 0/1")
+}
+
+Container_Boundary(phase2, "Phase 2: Identity & DID Components") {
+    
+    ' STORY-023: Veramo Agent
+    Component(veramo_agent, "Veramo Agent", "@veramo/core", "Core SSI agent, DID/VC operations\n[STORY-023]")
+    Component(agent_config, "Agent Configuration", "Config File", "Plugins, DID providers, KMS setup\n[STORY-023]")
+    Component(data_store_plugin, "DataStore Plugin", "@veramo/data-store", "TypeORM integration for DIDs/VCs\n[STORY-023]")
+    Component(did_resolver_plugin, "DID Resolver Plugin", "@veramo/did-resolver", "Resolves did:jwk, did:key, did:web\n[STORY-023]")
+    
+    ' STORY-024: Key Management
+    Component(key_manager_service, "Key Manager Service", "Service Layer", "High-level key operations API\n[STORY-024]")
+    Component(veramo_kms, "Veramo KMS", "@veramo/kms-local", "Key management system, crypto operations\n[STORY-024]")
+    Component(key_store, "Key Store", "Custom", "Secure key storage adapter\n[STORY-024]")
+    Component(key_types, "Key Types", "TypeScript", "Ed25519, Secp256k1 type definitions\n[STORY-024]")
+    
+    ' STORY-025: DID Manager
+    Component(did_manager_service, "DID Manager Service", "Service Layer", "Create, list, delete DIDs\n[STORY-025]")
+    Component(veramo_did_manager, "Veramo DID Manager", "@veramo/did-manager", "DID lifecycle management\n[STORY-025]")
+    Component(did_jwk_provider, "did:jwk Provider", "@veramo/did-provider-jwk", "JWK DID method\n[STORY-025]")
+    Component(did_key_provider, "did:key Provider", "@veramo/did-provider-key", "Key DID method\n[STORY-025]")
+    Component(did_entity, "DID Entity", "TypeORM Entity", "Identifier storage\n[STORY-025]")
+    
+    ' STORY-026: Identity Service
+    Component(identity_service, "Identity Service", "Service Layer", "Orchestrates key + DID creation\n[STORY-026]")
+    Component(identity_validator, "Identity Validator", "Validation", "Validates identity data\n[STORY-026]")
+    
+    ' STORY-027: Identity Storage
+    Component(identity_metadata_entity, "Identity Metadata", "TypeORM Entity", "Custom identity metadata (alias, tags)\n[STORY-027]")
+    Component(key_entity, "Key Entity", "TypeORM Entity", "Key metadata storage\n[STORY-027]")
+    
+    ' STORY-028: DID Resolution
+    Component(resolution_service, "DID Resolution Service", "Service Layer", "Resolve DIDs to documents\n[STORY-028]")
+    Component(resolution_cache, "Resolution Cache", "In-memory", "Cache resolved DID documents\n[STORY-028]")
+    
+    ' STORY-029: Multiple Identities
+    Component(identity_context_manager, "Identity Context Manager", "Service", "Switch between identities based on context\n[STORY-029]")
+    Component(default_identity_store, "Default Identity Store", "AsyncStorage", "Tracks default identity\n[STORY-029]")
+    
+    ' STORY-030: Identities Overview UI
+    Component(identities_list_screen, "Identities List Screen", "React Native Screen", "Display all identities, set default\n[STORY-030]")
+    Component(identity_card, "Identity Card Component", "React Component", "Visual identity representation\n[STORY-030]")
+    
+    ' STORY-031: Identity Details UI
+    Component(identity_detail_screen, "Identity Detail Screen", "React Native Screen", "Full identity info, QR code, keys\n[STORY-031]")
+    Component(qr_generator, "QR Code Generator", "react-native-qrcode-svg", "Generate QR for DID sharing\n[STORY-031]")
+    Component(share_service, "Share Service", "react-native-share", "Native share sheet\n[STORY-031]")
+    
+    ' STORY-032: Identity Creation UI
+    Component(create_identity_screen, "Create Identity Screen", "React Native Screen", "Form to create new identity\n[STORY-032]")
+    Component(method_selector, "DID Method Selector", "React Component", "Choose did:jwk or did:key\n[STORY-032]")
+}
+
+' Storage layers
+ContainerDb(sqlite_db, "SQLite Database", "TypeORM")
+ContainerDb(secure_storage, "Secure Storage", "Expo SecureStore")
+
+' Story Assembly Flow
+
+' STORY-023: Veramo Foundation
+Rel(agent_config, veramo_agent, "Configures", "1. Agent setup with plugins")
+Rel(veramo_agent, data_store_plugin, "Uses", "TypeORM storage")
+Rel(veramo_agent, did_resolver_plugin, "Uses", "DID resolution")
+Rel(data_store_plugin, database_dep, "Connects to", "Phase 0 database")
+
+' STORY-024: Key Management
+Rel(key_manager_service, veramo_kms, "Uses", "2. Key operations")
+Rel(veramo_kms, key_store, "Stores keys in", "Secure storage adapter")
+Rel(key_store, secure_storage_dep, "Encrypts to", "Hardware-backed storage")
+Rel(veramo_agent, veramo_kms, "Uses for", "Signing operations")
+Rel(key_manager_service, key_types, "Returns", "Typed key objects")
+
+' STORY-025: DID Manager
+Rel(did_manager_service, veramo_did_manager, "Uses", "3. DID operations")
+Rel(veramo_did_manager, did_jwk_provider, "Uses", "did:jwk creation")
+Rel(veramo_did_manager, did_key_provider, "Uses", "did:key creation")
+Rel(veramo_did_manager, veramo_kms, "Uses", "Key creation for DID")
+Rel(veramo_did_manager, did_entity, "Stores", "DID data")
+Rel(did_entity, sqlite_db, "Persists in", "identifiers table")
+Rel(veramo_agent, veramo_did_manager, "Exposes", "DID methods")
+
+' STORY-026: Identity Service
+Rel(identity_service, key_manager_service, "Uses", "4. Orchestrates key ops")
+Rel(identity_service, did_manager_service, "Uses", "Orchestrates DID ops")
+Rel(identity_service, identity_validator, "Validates with", "Business rules")
+
+' STORY-027: Storage
+Rel(identity_service, identity_metadata_entity, "Saves", "5. Custom metadata")
+Rel(identity_metadata_entity, sqlite_db, "Persists in", "identity_metadata table")
+Rel(key_entity, sqlite_db, "Persists in", "keys table")
+Rel(veramo_kms, key_entity, "Stores metadata", "Key info")
+
+' STORY-028: Resolution
+Rel(resolution_service, did_resolver_plugin, "Uses", "6. Resolve DIDs")
+Rel(resolution_service, resolution_cache, "Caches in", "Performance optimization")
+
+' STORY-029: Multiple Identities
+Rel(identity_context_manager, did_manager_service, "Gets all from", "7. List identities")
+Rel(identity_context_manager, default_identity_store, "Tracks default in", "AsyncStorage")
+
+' STORY-030: List UI
+Rel(identities_list_screen, identity_service, "Loads from", "8. Get all identities")
+Rel(identities_list_screen, identity_card, "Renders", "Each identity")
+Rel(identities_list_screen, navigation_dep, "Uses", "Routing")
+Rel(identity_card, identity_context_manager, "Sets default via", "User action")
+
+' STORY-031: Details UI
+Rel(identity_card, identity_detail_screen, "Navigates to", "9. On tap")
+Rel(identity_detail_screen, identity_service, "Loads details", "Single identity")
+Rel(identity_detail_screen, qr_generator, "Displays", "DID as QR")
+Rel(identity_detail_screen, share_service, "Shares via", "Native share")
+
+' STORY-032: Creation UI
+Rel(identities_list_screen, create_identity_screen, "Navigates to", "10. Create button")
+Rel(create_identity_screen, method_selector, "Shows", "Method choice")
+Rel(create_identity_screen, identity_service, "Creates via", "New identity")
+Rel(create_identity_screen, identity_detail_screen, "Navigates to", "After creation")
+
+SHOW_LEGEND()
+
+note top of dependencies
+  **Required from Phase 0 & 1**:
+  
+  - Navigation: Routes to identity screens
+  - Redux: Global state (optional)
+  - Database: TypeORM for DID storage
+  - Secure Storage: Private key storage
+  
+  Phase 2 CANNOT run without these!
+end note
+
+note right of veramo_agent
+  **STORY-023: Veramo Agent**
+  
+  Core SSI engine with plugins:
+  - DID Manager
+  - Key Manager
+  - DataStore (TypeORM)
+  - DID Resolver
+  
+  Order: MUST be first in Phase 2
+  Creates: Agent singleton
+  Output: DID/VC operations available
+end note
+
+note right of key_manager_service
+  **STORY-024: Key Management**
+  
+  Secure key operations:
+  - Create key pairs
+  - Sign data
+  - Never expose private keys
+  
+  Security:
+  - Keys stored in secure enclave
+  - Hardware-backed on iOS/Android
+  - Encrypted at rest
+  
+  Order: 2nd (before DIDs need keys)
+end note
+
+note right of did_manager_service
+  **STORY-025: DID Manager**
+  
+  DID lifecycle:
+  - Create (did:jwk, did:key)
+  - List all DIDs
+  - Get DID details
+  - Delete DID
+  
+  Depends on: Key Manager
+  Creates: Decentralized identifiers
+end note
+
+note bottom of phase2
+  **Phase 2 Assembly Process**:
+  
+  Week 6: Infrastructure
+  - STORY-023 → Veramo agent + plugins
+  - STORY-024 → Secure key management
+  - STORY-025 → DID manager (jwk, key)
+  
+  Week 7: Services & Storage
+  - STORY-026 → Identity service orchestration
+  - STORY-027 → Identity storage (entities)
+  - STORY-028 → DID resolution service
+  - STORY-029 → Multiple identities support
+  
+  Week 8: User Interface
+  - STORY-030 → Identities list screen
+  - STORY-031 → Identity detail + QR code
+  - STORY-032 → Create identity form
+  
+  **Result**: Complete identity system!
+  
+  **Prepares for Phase 3**:
+  - DIDs available for VC issuance
+  - Keys ready for signing
+  - Agent ready for credential operations
+  
+  **Security Boundary**:
+  - Private keys NEVER leave secure storage
+  - All crypto ops via Veramo KMS
+  - No keys in logs or state
+end note
+
+@enduml

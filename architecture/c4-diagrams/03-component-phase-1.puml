@@ -1,0 +1,200 @@
+@startuml Phase-1-Components
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+' Phase 1: Onboarding - Component Diagram
+' Shows onboarding flow assembly story by story
+
+LAYOUT_WITH_LEGEND()
+
+title Component Diagram - Phase 1: Onboarding Assembly
+
+' Phase 0 dependencies (simplified)
+Container_Boundary(phase0, "Phase 0: Foundation (Dependencies)") {
+    Component(navigation, "Navigation", "React Navigation", "From Phase 0")
+    Component(redux, "Redux Store", "Redux Toolkit", "From Phase 0")
+    Component(theme, "Theme System", "Context", "From Phase 0")
+    ComponentDb(database, "Database", "TypeORM", "From Phase 0")
+}
+
+Container_Boundary(phase1, "Phase 1: Onboarding Components") {
+    
+    ' STORY-011: Welcome Screen
+    Component(welcome_screen, "Welcome Screen", "React Native Screen", "App introduction, hero section, Get Started CTA\n[STORY-011]")
+    
+    ' STORY-012: Terms & Privacy
+    Component(terms_screen, "Terms & Privacy Screen", "React Native Screen", "Legal agreements, checkboxes, acceptance\n[STORY-012]")
+    Component(terms_state, "Terms State", "Redux Slice", "Terms accepted status\n[STORY-012]")
+    
+    ' STORY-013: Personal Details
+    Component(details_form, "Personal Details Form", "React Hook Form", "Name, email, optional info collection\n[STORY-013]")
+    Component(form_validation, "Form Validation", "Zod", "Schema validation for user input\n[STORY-013]")
+    Component(user_entity, "User Entity", "TypeORM Entity", "User profile storage\n[STORY-013]")
+    
+    ' STORY-014: PIN Setup
+    Component(pin_setup_screen, "PIN Setup Screen", "React Native Screen", "6-digit PIN creation interface\n[STORY-014]")
+    Component(pin_confirm_screen, "PIN Confirm Screen", "React Native Screen", "PIN confirmation, must match\n[STORY-014]")
+    Component(pin_service, "PIN Service", "Crypto Service", "Hash PIN with bcrypt/scrypt\n[STORY-014]")
+    
+    ' STORY-015: Biometric Setup
+    Component(biometric_screen, "Biometric Setup Screen", "React Native Screen", "Enable TouchID/FaceID prompt\n[STORY-015]")
+    Component(biometric_service, "Biometric Service", "expo-local-authentication", "Hardware biometric integration\n[STORY-015]")
+    
+    ' STORY-016: XState Flow
+    Component(onboarding_machine, "Onboarding State Machine", "XState", "Controls flow: welcome→terms→details→PIN→bio\n[STORY-016]")
+    Component(machine_interpreter, "Machine Interpreter", "XState React", "Executes state transitions\n[STORY-016]")
+    
+    ' STORY-017: Progress Indicator
+    Component(progress_bar, "Progress Bar", "React Native Component", "Visual step indicator (1/5, 2/5...)\n[STORY-017]")
+    
+    ' STORY-018: Onboarding Complete
+    Component(complete_screen, "Onboarding Complete Screen", "React Native Screen", "Success message, animation, Continue button\n[STORY-018]")
+    Component(onboarding_status, "Onboarding Status", "Redux Slice", "Tracks completion state\n[STORY-018]")
+    
+    ' STORY-019: Skip/Back Navigation
+    Component(navigation_controls, "Navigation Controls", "Components", "Skip, Back buttons with guards\n[STORY-019]")
+    
+    ' STORY-020: Data Persistence
+    Component(persistence_layer, "Persistence Layer", "Service", "Saves onboarding data incrementally\n[STORY-020]")
+    
+    ' STORY-021: Lock Screen
+    Component(lock_screen, "Lock Screen", "React Native Screen", "PIN/Biometric authentication on app open\n[STORY-021]")
+    Component(auth_guard, "Auth Guard", "HOC/Hook", "Protects authenticated routes\n[STORY-021]")
+    
+    ' STORY-022: Settings Integration
+    Component(settings_screen, "Auth Settings Screen", "React Native Screen", "Change PIN, toggle biometric\n[STORY-022]")
+}
+
+' Storage
+ContainerDb(secure_storage, "Secure Storage", "Expo SecureStore", "PIN hash, biometric token")
+
+' Story Assembly Flow
+
+' STORY-011: Entry point
+Rel(navigation, welcome_screen, "Routes to", "1. First screen in flow")
+Rel(welcome_screen, theme, "Styled by", "Theme colors/typography")
+
+' STORY-012: Terms
+Rel(welcome_screen, terms_screen, "Navigates to", "2. Get Started button")
+Rel(terms_screen, terms_state, "Updates", "Acceptance status")
+Rel(terms_state, redux, "Stored in", "Global state")
+
+' STORY-013: Personal Details
+Rel(terms_screen, details_form, "Navigates to", "3. After terms accepted")
+Rel(details_form, form_validation, "Validates with", "Zod schema")
+Rel(details_form, user_entity, "Saves to", "User profile")
+Rel(user_entity, database, "Persists in", "SQLite")
+
+' STORY-014: PIN Setup
+Rel(details_form, pin_setup_screen, "Navigates to", "4. After details saved")
+Rel(pin_setup_screen, pin_confirm_screen, "Proceeds to", "PIN entry complete")
+Rel(pin_confirm_screen, pin_service, "Hashes with", "bcrypt/scrypt")
+Rel(pin_service, secure_storage, "Stores hash in", "Hardware-backed")
+
+' STORY-015: Biometric
+Rel(pin_confirm_screen, biometric_screen, "Navigates to", "5. Optional biometric")
+Rel(biometric_screen, biometric_service, "Checks availability", "Hardware capability")
+Rel(biometric_service, secure_storage, "Stores token", "If enabled")
+
+' STORY-016: State Machine
+Rel(onboarding_machine, welcome_screen, "Controls", "State: welcome")
+Rel(onboarding_machine, terms_screen, "Controls", "State: terms")
+Rel(onboarding_machine, details_form, "Controls", "State: details")
+Rel(onboarding_machine, pin_setup_screen, "Controls", "State: pin_setup")
+Rel(onboarding_machine, biometric_screen, "Controls", "State: biometric")
+Rel(machine_interpreter, onboarding_machine, "Executes", "Transitions on events")
+
+' STORY-017: Progress
+Rel(progress_bar, onboarding_machine, "Reads from", "Current state")
+
+' STORY-018: Complete
+Rel(biometric_screen, complete_screen, "Navigates to", "6. Final step")
+Rel(complete_screen, onboarding_status, "Sets", "Completed = true")
+Rel(onboarding_status, redux, "Persisted in", "Redux store")
+
+' STORY-019: Navigation controls
+Rel(navigation_controls, onboarding_machine, "Sends events", "BACK, SKIP actions")
+
+' STORY-020: Persistence
+Rel(persistence_layer, database, "Saves to", "After each step")
+
+' STORY-021: Lock Screen
+Rel(lock_screen, pin_service, "Verifies with", "Compare hash")
+Rel(lock_screen, biometric_service, "Or authenticates via", "Biometric")
+Rel(auth_guard, lock_screen, "Shows if", "App locked")
+
+' STORY-022: Settings
+Rel(settings_screen, pin_service, "Changes PIN via", "Update hash")
+Rel(settings_screen, biometric_service, "Toggles biometric", "Enable/disable")
+
+SHOW_LEGEND()
+
+note top of phase0
+  **Dependencies from Phase 0**:
+  
+  All Phase 1 components depend on:
+  - Navigation (routing)
+  - Redux (state)
+  - Theme (styling)
+  - Database (persistence)
+  
+  Phase 1 cannot be built without Phase 0!
+end note
+
+note right of onboarding_machine
+  **STORY-016: XState Flow**
+  
+  States:
+  1. welcome (STORY-011)
+  2. terms (STORY-012)
+  3. details (STORY-013)
+  4. pin_setup (STORY-014)
+  5. biometric (STORY-015)
+  6. complete (STORY-018)
+  
+  Transitions:
+  - NEXT → next state
+  - BACK → previous state
+  - SKIP → skip optional steps
+  
+  Guards:
+  - Terms must be accepted
+  - Details must be valid
+  - PIN must match
+end note
+
+note bottom of phase1
+  **Phase 1 Assembly Process**:
+  
+  Week 3: Screens & Flow
+  - STORY-011 → Welcome screen
+  - STORY-012 → Terms & Privacy
+  - STORY-013 → Personal Details form
+  
+  Week 4: Authentication
+  - STORY-014 → PIN setup (create + confirm)
+  - STORY-015 → Biometric optional
+  - STORY-016 → XState flow control
+  
+  Week 5: Completion & Security
+  - STORY-017 → Progress indicator
+  - STORY-018 → Completion screen
+  - STORY-019 → Skip/Back navigation
+  - STORY-020 → Data persistence
+  - STORY-021 → Lock screen
+  - STORY-022 → Settings integration
+  
+  **Result**: Complete onboarding flow!
+  
+  **Integration with Phase 0**:
+  - Uses Navigation for routing
+  - Uses Redux for state
+  - Uses Database for user data
+  - Uses Theme for styling
+  
+  **Prepares for Phase 2**:
+  - User authenticated
+  - Secure storage ready for keys
+  - Database ready for DIDs
+end note
+
+@enduml

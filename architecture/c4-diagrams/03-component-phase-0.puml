@@ -1,0 +1,164 @@
+@startuml Phase-0-Components
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+' Phase 0: Foundation - Component Diagram
+' Shows how foundation components are assembled story by story
+
+LAYOUT_WITH_LEGEND()
+
+title Component Diagram - Phase 0: Foundation Assembly
+
+Container_Boundary(mobile_app, "Mobile Application - Phase 0 Foundation") {
+    
+    ' STORY-001: Project Structure
+    Component(app_entry, "App Entry Point", "App.tsx", "Root component, renders navigation tree\n[STORY-001]")
+    
+    ' STORY-002: TypeScript
+    Component(type_definitions, "Type Definitions", "TypeScript", "Global types, interfaces, type safety\n[STORY-002]")
+    
+    ' STORY-003: ESLint/Prettier
+    Component(code_quality, "Code Quality Tools", "ESLint, Prettier", "Linting, formatting, automated checks\n[STORY-003]")
+    
+    ' STORY-004: Navigation
+    Component(navigation_config, "Navigation Configuration", "React Navigation", "Stack, tab, drawer navigators setup\n[STORY-004]")
+    Component(navigation_types, "Navigation Types", "TypeScript", "Type-safe navigation params\n[STORY-004]")
+    
+    ' STORY-005: Redux
+    Component(redux_store, "Redux Store", "Redux Toolkit", "Global state management\n[STORY-005]")
+    Component(redux_slices, "Redux Slices", "RTK Slices", "Feature-based state (auth, user, settings)\n[STORY-005]")
+    Component(redux_persist, "Redux Persist", "redux-persist", "State persistence to AsyncStorage\n[STORY-005]")
+    
+    ' STORY-006: Database
+    Component(typeorm_config, "TypeORM Config", "TypeORM", "Database connection, migrations\n[STORY-006]")
+    Component(base_entities, "Base Entities", "TypeORM Entities", "User, Settings entities\n[STORY-006]")
+    
+    ' STORY-007: Theme System
+    Component(theme_provider, "Theme Provider", "React Context", "Light/dark theme, colors, typography\n[STORY-007]")
+    Component(styled_components, "Styled Components", "React Native", "Reusable UI components\n[STORY-007]")
+    
+    ' STORY-008: Environment Config
+    Component(env_config, "Environment Config", "expo-constants", "API URLs, feature flags per environment\n[STORY-008]")
+    
+    ' STORY-009: Error Boundaries
+    Component(error_boundary, "Error Boundary", "React", "Catches and handles React errors\n[STORY-009]")
+    Component(error_logging, "Error Logging", "Custom", "Logs errors for debugging\n[STORY-009]")
+    
+    ' STORY-010: Base Components
+    Component(ui_kit, "UI Component Kit", "React Native", "Button, Input, Card, Text primitives\n[STORY-010]")
+}
+
+' Storage layers
+ContainerDb(async_storage, "AsyncStorage", "React Native", "Key-value storage for state, settings")
+ContainerDb(sqlite_db, "SQLite Database", "TypeORM", "Relational data storage")
+
+' Relationships - Story Assembly Order
+
+' STORY-001 creates entry point
+Rel(app_entry, navigation_config, "Renders", "1. First story creates structure")
+
+' STORY-002 adds types
+Rel(type_definitions, app_entry, "Types for", "2. TypeScript types everything")
+Rel(type_definitions, navigation_types, "Defines", "Navigation params typed")
+
+' STORY-003 enforces quality (doesn't show in runtime)
+
+' STORY-004 Navigation setup
+Rel(app_entry, navigation_config, "Mounts", "3. Navigation tree rendered")
+Rel(navigation_config, navigation_types, "Uses", "Type-safe routing")
+
+' STORY-005 Redux integration
+Rel(app_entry, redux_store, "Provides", "4. Redux Provider wraps app")
+Rel(redux_store, redux_slices, "Contains", "Feature state slices")
+Rel(redux_store, redux_persist, "Persists via", "Automatic persistence")
+Rel(redux_persist, async_storage, "Saves to", "Serialized state")
+
+' STORY-006 Database setup
+Rel(app_entry, typeorm_config, "Initializes", "5. DB connection on startup")
+Rel(typeorm_config, sqlite_db, "Connects to", "SQLite instance")
+Rel(typeorm_config, base_entities, "Manages", "Entity definitions")
+Rel(base_entities, sqlite_db, "Stores in", "Persisted data")
+
+' STORY-007 Theme system
+Rel(app_entry, theme_provider, "Wraps with", "6. Theme context at root")
+Rel(styled_components, theme_provider, "Reads from", "Theme values")
+Rel(ui_kit, theme_provider, "Styled by", "Theme-aware components")
+
+' STORY-008 Environment
+Rel(env_config, redux_store, "Configures", "7. Environment-specific settings")
+Rel(env_config, typeorm_config, "Configures", "DB per environment")
+
+' STORY-009 Error handling
+Rel(error_boundary, app_entry, "Wraps", "8. Catches app errors")
+Rel(error_boundary, error_logging, "Logs to", "Error reporting")
+
+' STORY-010 UI Kit
+Rel(ui_kit, theme_provider, "Uses", "9. Base components use theme")
+Rel(ui_kit, styled_components, "Builds with", "Styled primitives")
+
+SHOW_LEGEND()
+
+note right of app_entry
+  **STORY-001: Initialize**
+  Creates app structure
+  
+  Order: 1st (foundation)
+  Dependencies: None
+  Creates: App.tsx, package.json
+  Output: Runnable empty app
+end note
+
+note right of navigation_config
+  **STORY-004: Navigation**
+  Sets up routing
+  
+  Order: 4th
+  Dependencies: STORY-001, 002
+  Creates: Navigation tree
+  Output: Multi-screen navigation
+end note
+
+note right of redux_store
+  **STORY-005: Redux**
+  State management
+  
+  Order: 5th
+  Dependencies: STORY-001, 002
+  Creates: Store, slices, persist
+  Output: Global state available
+end note
+
+note right of typeorm_config
+  **STORY-006: Database**
+  Data persistence
+  
+  Order: 6th
+  Dependencies: STORY-001, 002
+  Creates: ORM, entities, migrations
+  Output: Database ready
+end note
+
+note bottom of mobile_app
+  **Phase 0 Assembly Process**:
+  
+  1. STORY-001 → Project structure (Expo + React Native)
+  2. STORY-002 → TypeScript strict mode
+  3. STORY-003 → ESLint + Prettier automation
+  4. STORY-004 → Navigation system
+  5. STORY-005 → Redux + persistence
+  6. STORY-006 → Database (TypeORM + SQLite)
+  7. STORY-007 → Theme system (light/dark)
+  8. STORY-008 → Environment config
+  9. STORY-009 → Error boundaries
+  10. STORY-010 → UI component kit
+  
+  **Result**: Foundation ready for Phase 1!
+  
+  **Integration Points**:
+  - All components use TypeScript (STORY-002)
+  - All screens use Navigation (STORY-004)
+  - All state uses Redux (STORY-005)
+  - All data uses TypeORM (STORY-006)
+  - All UI uses Theme (STORY-007)
+end note
+
+@enduml
