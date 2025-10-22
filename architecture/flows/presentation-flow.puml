@@ -1,0 +1,218 @@
+@startuml Credential Presentation Flow
+
+title Credential Presentation Flow (OID4VP/SIOPv2)
+
+actor User
+participant "QR Scanner" as QR
+participant "Auth Parser" as Parser
+participant "Metadata\nResolver" as Metadata
+participant "Contact\nService" as Contact
+participant "PEX\nEvaluator" as PEX
+participant "Credential\nSelection UI" as Selection
+participant "Consent\nScreen" as Consent
+participant "VP Creator" as Creator
+participant "VP Signer" as Signer
+participant "Submitter" as Submit
+participant "Verifier" as Verifier
+database "Credentials" as CredDB
+database "Contacts" as ContactDB
+
+== 1. Authorization Request ==
+
+Verifier -> User: Show QR code
+note right
+  QR contains:
+  openid4vp://?
+    client_id=https://verifier.com
+    &request_uri=...
+    &response_mode=direct_post
+end note
+
+User -> QR: Scan QR code
+activate QR
+
+QR -> Parser: Parse QR data
+activate Parser
+
+Parser -> Parser: Validate format
+Parser -> Parser: Extract parameters
+
+alt request_uri provided
+    Parser -> Verifier: GET request_uri
+    Verifier --> Parser: Authorization request
+end
+
+Parser --> QR: Parsed request
+deactivate Parser
+
+== 2. Resolve Verifier Metadata ==
+
+QR -> Metadata: Resolve metadata\n(client_id)
+activate Metadata
+
+alt Has inline metadata
+    Metadata -> Metadata: Use inline metadata
+else No inline metadata
+    Metadata -> Verifier: GET /.well-known/openid-configuration
+    Verifier --> Metadata: Metadata (name, logo, purpose)
+end
+
+Metadata --> QR: Verifier metadata
+deactivate Metadata
+
+== 3. Create/Update Contact ==
+
+QR -> Contact: Create or update contact
+activate Contact
+
+Contact -> ContactDB: Check if exists
+alt Contact exists
+    Contact -> ContactDB: Update contact
+else New contact
+    Contact -> ContactDB: Create contact
+end
+
+Contact --> QR: Contact created/updated
+deactivate Contact
+
+== 4. Evaluate Presentation Exchange ==
+
+QR -> PEX: Evaluate PEX\n(presentation_definition)
+activate PEX
+
+PEX -> CredDB: Get user credentials
+CredDB --> PEX: User's credentials
+
+PEX -> PEX: Match credentials\nto requirements
+note right
+  For each input_descriptor:
+  • Check type constraints
+  • Evaluate field filters
+  • Score matches
+end note
+
+alt No matches
+    PEX --> QR: No matching credentials
+    QR -> User: Error: Missing credentials
+    deactivate QR
+    deactivate PEX
+else Has matches
+    PEX --> QR: Matching credentials
+    deactivate PEX
+end
+
+== 5. Credential Selection ==
+
+QR -> Selection: Show matches
+deactivate QR
+activate Selection
+
+Selection -> User: Display:\n• Required credentials\n• Optional credentials\n• Alternatives
+
+User -> Selection: Select credentials\nto share
+
+alt User cancels
+    Selection --> User: Canceled
+    deactivate Selection
+else User selects
+    Selection -> Selection: Validate selection\n(all required satisfied)
+end
+
+== 6. Consent Review ==
+
+Selection -> Consent: Navigate with\nselected credentials
+deactivate Selection
+activate Consent
+
+Consent -> User: Show:\n• Verifier info\n• Fields to be shared\n• Purpose\n• Warnings
+
+User -> Consent: Review
+
+alt User rejects
+    Consent --> User: Sharing canceled
+    deactivate Consent
+else User approves
+    Consent -> Consent: Log consent
+end
+
+== 7. Create Verifiable Presentation ==
+
+Consent -> Creator: Create VP
+deactivate Consent
+activate Creator
+
+Creator -> Creator: Build VP structure
+note right
+  {
+    "@context": [...],
+    "type": ["VerifiablePresentation"],
+    "holder": "did:jwk:user123",
+    "verifiableCredential": [
+      // selected credentials
+    ],
+    "presentation_submission": {
+      "definition_id": "...",
+      "descriptor_map": [...]
+    }
+  }
+end note
+
+Creator --> Consent: Unsigned VP
+deactivate Creator
+
+== 8. Sign VP with DID ==
+
+Consent -> Signer: Sign VP\n(holder DID)
+activate Signer
+
+Signer -> Signer: Get holder's private key
+Signer -> Signer: Create JWT VP\n(sign with key)
+note right
+  JWT Payload:
+  {
+    "vp": { /* VP object */ },
+    "iss": "did:jwk:user123",
+    "aud": "https://verifier.com",
+    "nonce": "...",
+    "exp": ...
+  }
+end note
+
+Signer -> Signer: Verify signature\n(local check)
+
+Signer --> Consent: Signed VP
+deactivate Signer
+
+== 9. Submit to Verifier ==
+
+Consent -> Submit: Submit VP
+activate Submit
+
+Submit -> Verifier: POST /response_uri\nvp_token=<signed_vp>\n&presentation_submission=...
+activate Verifier
+
+Verifier -> Verifier: Verify signature
+Verifier -> Verifier: Validate VP structure
+Verifier -> Verifier: Check credentials
+Verifier -> Verifier: Evaluate presentation\nsubmission
+
+alt Verification successful
+    Verifier --> Submit: 200 OK\n{redirect_uri, session_id}
+    Submit --> Consent: Success
+    deactivate Submit
+    
+    Consent -> User: ✅ Success!\nCredentials shared
+    deactivate Consent
+    
+else Verification failed
+    Verifier --> Submit: 400 Bad Request\n{error, error_description}
+    Submit --> Consent: Error
+    deactivate Submit
+    
+    Consent -> User: ❌ Failed\nError details
+    deactivate Consent
+end
+
+deactivate Verifier
+
+@enduml
