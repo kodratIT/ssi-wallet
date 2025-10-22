@@ -1,0 +1,144 @@
+@startuml Phase 5 - Presentation Flow Components
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Component Diagram - Phase 5: Presentation Flow (OID4VP/SIOPv2)
+
+Container_Boundary(mobile_app, "SSI Mobile Wallet") {
+    
+    ' UI Layer - Screens
+    Component(qr_reader, "QR Reader Screen", "React Native", "Scan verifier QR codes")
+    Component(credential_selection, "Credential Selection Screen", "React Native", "Choose credentials to share")
+    Component(consent_screen, "Consent Screen", "React Native", "Review & approve sharing")
+    Component(success_screen, "Success Screen", "React Native", "Confirmation feedback")
+    Component(error_screen, "Error Screen", "React Native", "Error handling & retry")
+    
+    ' Components
+    Component(verifier_card, "Verifier Card", "Component", "Display verifier info")
+    Component(requirement_card, "Requirement Card", "Component", "Show requirements")
+    Component(disclosure_card, "Disclosure Card", "Component", "Show shared fields")
+    
+    ' State Management
+    Component(presentation_machine, "Presentation Machine", "XState", "Orchestrate entire flow")
+    Component(presentation_hook, "usePresentationFlow", "React Hook", "React integration")
+    
+    ' Services - SIOPv2
+    Component(siop_service, "SIOPv2 Service", "TypeScript", "SIOPv2 protocol handler")
+    Component(auth_parser, "Auth Request Parser", "TypeScript", "Parse authorization requests")
+    Component(metadata_resolver, "Metadata Resolver", "TypeScript", "Resolve verifier metadata")
+    
+    ' Services - PEX
+    Component(pex_service, "PEX Service", "TypeScript", "Presentation Exchange evaluation")
+    Component(pex_interpreter, "PEX Result Interpreter", "TypeScript", "User-friendly messages")
+    
+    ' Services - VP
+    Component(vp_creator, "VP Creator", "TypeScript", "Create Verifiable Presentations")
+    Component(vp_signer, "VP Signer", "TypeScript", "Sign VP with DID")
+    Component(presentation_submitter, "Presentation Submitter", "TypeScript", "Submit to verifier")
+    
+    ' Services - Support
+    Component(consent_service, "Consent Service", "TypeScript", "Log user consent")
+    Component(contact_service, "Contact Service", "TypeScript", "Manage verifier contacts")
+    
+    ' Deep Link Handler
+    Component(deeplink_handler, "Deep Link Handler", "React Native", "Handle openid4vp:// links")
+}
+
+Container_Boundary(veramo, "Veramo Agent") {
+    Component(did_manager, "DID Manager", "Veramo Plugin", "Manage DIDs")
+    Component(key_manager, "Key Manager", "Veramo Plugin", "Sign with private keys")
+    Component(credential_plugin, "Credential Plugin", "Veramo Plugin", "Handle VCs/VPs")
+}
+
+Container_Boundary(storage, "Storage Layer") {
+    ComponentDb(credentials_db, "Credentials", "SQLite", "User's credentials")
+    ComponentDb(contacts_db, "Contacts", "SQLite", "Verifiers & Issuers")
+    ComponentDb(consent_log, "Consent Log", "SQLite", "Audit trail")
+    ComponentDb(activity_log, "Activity Log", "SQLite", "Presentation history")
+}
+
+System_Ext(verifier, "Verifier", "Service requesting credentials")
+
+' Relationships - User Flow
+Rel(qr_reader, presentation_machine, "Triggers", "QR_SCANNED event")
+Rel(presentation_machine, auth_parser, "Invokes", "Parse request")
+Rel(presentation_machine, metadata_resolver, "Invokes", "Resolve metadata")
+Rel(presentation_machine, pex_service, "Invokes", "Evaluate PEX")
+Rel(presentation_machine, credential_selection, "Shows", "Matching credentials")
+Rel(credential_selection, consent_screen, "Navigates to")
+Rel(consent_screen, presentation_machine, "Triggers", "CONSENT_APPROVED")
+Rel(presentation_machine, vp_creator, "Invokes", "Create VP")
+Rel(presentation_machine, vp_signer, "Invokes", "Sign VP")
+Rel(presentation_machine, presentation_submitter, "Invokes", "Submit VP")
+Rel(presentation_machine, success_screen, "Shows", "On success")
+Rel(presentation_machine, error_screen, "Shows", "On error")
+
+' React Integration
+Rel(credential_selection, presentation_hook, "Uses")
+Rel(consent_screen, presentation_hook, "Uses")
+Rel(presentation_hook, presentation_machine, "Wraps")
+
+' Service Dependencies
+Rel(auth_parser, siop_service, "Uses")
+Rel(metadata_resolver, contact_service, "Creates/Updates contact")
+Rel(pex_service, credentials_db, "Queries", "User credentials")
+Rel(pex_service, pex_interpreter, "Results to")
+Rel(consent_screen, consent_service, "Logs consent")
+Rel(vp_creator, credential_plugin, "Uses")
+Rel(vp_signer, key_manager, "Signs with")
+Rel(vp_signer, did_manager, "Resolves DID")
+Rel(presentation_submitter, verifier, "POST", "VP token")
+
+' Storage
+Rel(contact_service, contacts_db, "Stores", "Verifier info")
+Rel(consent_service, consent_log, "Writes", "Consent records")
+Rel(presentation_submitter, activity_log, "Logs", "Presentation events")
+Rel(pex_service, credentials_db, "Reads", "Credentials")
+
+' Deep Linking
+Rel(deeplink_handler, qr_reader, "Routes to", "On openid4vp://")
+Rel(verifier, deeplink_handler, "Redirects", "Deep link")
+
+' UI Components
+Rel(credential_selection, verifier_card, "Displays")
+Rel(credential_selection, requirement_card, "Displays")
+Rel(consent_screen, disclosure_card, "Displays")
+
+SHOW_LEGEND()
+
+note right of presentation_machine
+  **State Machine States:**
+  • idle
+  • scanning
+  • parsingRequest
+  • resolvingMetadata
+  • checkingContact
+  • evaluatingPEX
+  • selectingCredentials
+  • reviewingConsent
+  • creatingVP
+  • signingVP
+  • submittingVP
+  • success
+  • error
+end note
+
+note right of pex_service
+  **PEX Evaluation:**
+  • Match credentials to requirements
+  • Check constraints & filters
+  • Score matches
+  • Return satisfied/unsatisfied
+end note
+
+note right of vp_creator
+  **VP Structure:**
+  • W3C VerifiablePresentation
+  • Include selected credentials
+  • Presentation submission descriptor
+  • Holder DID
+end note
+
+@enduml
