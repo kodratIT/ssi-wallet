@@ -294,3 +294,99 @@ cat architecture/flows/onboarding-flow.puml
 **Status**: Architecture documentation in progress  
 **Model**: C4 + PlantUML  
 **Purpose**: Visualize SSI Wallet construction  
+
+---
+
+## 🆕 Phase 5: Presentation Flow (NEW!)
+
+### C4 Component Diagram
+
+**File**: `c4-diagrams/03-component-phase-5.puml`  
+**Shows**: 
+- SIOPv2 protocol components
+- PEX evaluation engine
+- VP creation & signing
+- State machine orchestration
+- All services & screens
+
+### Flow Diagram
+
+**File**: `flows/presentation-flow.puml`  
+**Shows**: Complete presentation flow sequence
+- Authorization request handling
+- Metadata resolution
+- PEX evaluation
+- User selection & consent
+- VP creation & signing
+- Submission to verifier
+
+### Construction Guide
+
+**File**: `story-mapping/phase-5-construction.md`  
+**Content**:
+- Week-by-week construction plan
+- Story dependencies
+- Integration points
+- Common pitfalls
+- Testing strategy
+
+### Wireframes
+
+**File**: `wireframes/phase-5-presentation-screens.md`  
+**Screens** (7):
+1. QR Scanner (enhanced)
+2. Credential Selection
+3. Consent Screen
+4. Signing & Submitting
+5. Success Screen
+6. Error Screen
+7. Verifier Details (optional)
+
+---
+
+## 📊 Architecture Documentation Status
+
+| Phase | C4 Diagram | Flow Diagram | Construction Guide | Wireframes | Status |
+|-------|------------|--------------|-------------------|------------|--------|
+| Phase 0 | ✅ | - | ✅ | - | Complete |
+| Phase 1 | ✅ | ✅ | ✅ | - | Complete |
+| Phase 2 | ✅ | ✅ | ✅ | - | Complete |
+| Phase 3 | ✅ | ✅ | ✅ | - | Complete |
+| Phase 4 | - | - | - | - | Stories only |
+| **Phase 5** | ✅ | ✅ | ✅ | ✅ | **Complete** |
+
+**Phase 5 is the most comprehensive!** 🎉
+
+---
+
+## 🎯 How to Use Phase 5 Architecture
+
+### 1. Understand the Big Picture
+```bash
+# View component diagram
+cat architecture/c4-diagrams/03-component-phase-5.puml
+```
+
+### 2. Study the Flow
+```bash
+# View sequence diagram
+cat architecture/flows/presentation-flow.puml
+```
+
+### 3. Follow Construction Guide
+```bash
+# Read step-by-step guide
+cat architecture/story-mapping/phase-5-construction.md
+```
+
+### 4. Design UI
+```bash
+# View wireframes
+cat architecture/wireframes/phase-5-presentation-screens.md
+```
+
+---
+
+**Updated**: 2024  
+**Phase 5 Architecture**: Complete with all diagrams, flows, and guides  
+**Ready**: For implementation 🚀
